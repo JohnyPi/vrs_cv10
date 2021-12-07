@@ -22,6 +22,8 @@
 #include "main.h"
 #include "usart.h"
 #include "stm32f3xx_it.h"
+#include "tim.h"
+#define COUNTS 1
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -33,7 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -63,7 +65,7 @@
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M4 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles Non maskable interrupt.
@@ -185,7 +187,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  
+
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
@@ -239,6 +241,13 @@ void USART2_IRQHandler(void)
 		USART2_CheckDmaReception();
 		LL_USART_ClearFlag_IDLE(USART2);
 	}
+}
+
+void TIM2_IRQHandler(void)
+{
+	LL_TIM_ClearFlag_UPDATE(TIM2);
+	 PWM_IRG_callback();
+
 }
 /* USER CODE BEGIN 1 */
 

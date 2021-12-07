@@ -21,11 +21,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 #include "string.h"
 #include <ctype.h>
 #include <stdio.h>
+#include "assignment.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -55,7 +57,9 @@ uint8_t Mode_auto = 1;
 uint8_t digi_1 = 0;
 uint8_t digi_2 = 0;
 uint8_t Duty_ = 0;
+uint8_t old_duty = 0;
 uint32_t dlzka = 0;
+volatile uint16_t i = 0; //indexy PWM pola
 
 #define BUFF_LEN 50
 char buff[BUFF_LEN];
@@ -66,6 +70,8 @@ char buff[BUFF_LEN];
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void receive_dma_data(const uint8_t *data, uint16_t len);
+void setDutyCycle(uint8_t D);
+void PWM_IRG_callback(void);
 void USART2_RegisterCallback(void *callback);
 /* USER CODE END PFP */
 
@@ -110,6 +116,7 @@ int main(void) {
 	MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_USART2_UART_Init();
+	MX_TIM2_Init();
 	/* USER CODE BEGIN 2 */
 	USART2_RegisterCallback(receive_dma_data);
 
@@ -196,7 +203,33 @@ void receive_dma_data(const uint8_t *data, uint16_t len) {
 	}
 }
 
+void PWM_IRG_callback(void) {
+	if (Mode_manual) {
+		old_duty = LL_TIM_OC_GetCompareCH1(TIM2);
+		if (old_duty < Duty_) {
+			old_duty++;
+			setDutyCycle(old_duty);
+		} else if (Duty_ < old_duty) {
+			old_duty--;
+			setDutyCycle(old_duty);
+		}
+	} else if (Mode_auto) {
+		if (i < 197) {
+			i++;
+		} else {
+			i = 0;
+		}
+		setDutyCycle(aDutyCycle[i]);
+	}
+}
 
+void setDutyCycle(uint8_t D) {
+	uint8_t P;
+	uint8_t T;
+	T = LL_TIM_GetAutoReload(TIM2) + 1;
+	P = (D * T) / 100;
+	LL_TIM_OC_SetCompareCH1(TIM2, P);
+}
 
 /* USER CODE END 4 */
 
