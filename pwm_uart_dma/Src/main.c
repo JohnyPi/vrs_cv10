@@ -24,7 +24,7 @@
 #include "usart.h"
 #include "gpio.h"
 #include "string.h"
-#include<ctype.h>
+#include <ctype.h>
 #include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -49,14 +49,16 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t velke = 0;
-uint8_t male = 0;
-uint8_t state_ = 0;
-uint8_t index_P = 0;
+
+uint8_t Mode_manual = 0;
+uint8_t Mode_auto = 1;
+uint8_t digi_1 = 0;
+uint8_t digi_2 = 0;
+uint8_t Duty_ = 0;
+uint32_t dlzka = 0;
 
 #define BUFF_LEN 50
 char buff[BUFF_LEN];
-char dat_[100];
 
 /* USER CODE END PV */
 
@@ -64,6 +66,7 @@ char dat_[100];
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void receive_dma_data(const uint8_t *data, uint16_t len);
+void USART2_RegisterCallback(void *callback);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -75,7 +78,6 @@ void receive_dma_data(const uint8_t *data, uint16_t len);
  * @brief  The application entry point.
  * @retval int
  */
-
 
 int main(void) {
 	/* USER CODE BEGIN 1 */
@@ -117,14 +119,6 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		uint16_t get_buff = DMA_buffer_size();
-		float buff_prtg = (float) (get_buff) / (float) (DMA_USART2_BUFFER_SIZE)*100;
-		sprintf(dat_, "Buffer capacity: %d bytes, occupied memory: %d bytes, load [in %]:%.1f%%\r\n", DMA_USART2_BUFFER_SIZE, get_buff, buff_prtg);
-
-		USART2_PutBuffer((uint8_t *) dat_, sizeof(dat_));
-		LL_mDelay(1000);
-
-		/* USER CODE BEGIN 3 */
 	}
 	/* USER CODE END 3 */
 }
@@ -160,54 +154,49 @@ void SystemClock_Config(void) {
 	LL_SetSystemCoreClock(8000000);
 }
 
-
-
 /* USER CODE BEGIN 4 */
 void receive_dma_data(const uint8_t *data, uint16_t len) {
-	if (*(data) == 0x0D) {
-		return;
-	}
-	uint8_t RX_len = len - 1;
-	if (*(data) == '#') {
-		state_ = 1;
+	uint8_t RX_len = len;
 
-		for (uint8_t i = 1; i < RX_len; i++) {
+	if (*(data) == '$') {
+		for (uint8_t i = dlzka + 1; i < RX_len; i++) {
 
 			if (*(data + i) == '$') {
-				for (uint8_t j = 1; j < i; j++) {
-					if (isupper(*(data + j))) {
-						velke++;
-						if (velke >= 255) {
-							velke = 0;
-						}
-					} else if (islower(*(data + j))) {
-						male++;
-						if (male >= 255) {
-							male = 0;
-						}
-					}
+				if (strstr(buff, "manual") != NULL) {
+					Mode_manual = 1;
+					Mode_auto = 0;
+				} else if (Mode_manual == 1 && strstr(buff, "PWM")) {
+					digi_1 = (buff[3] - '0') * 10;
+					digi_2 = (buff[4] - '0') * 1;
+					Duty_ = digi_1 + digi_2;
 
+				} else if (strstr(buff, "auto") != NULL) {
+					Mode_manual = 0;
+					Mode_auto = 1;
 				}
 				memset(buff, '\0', BUFF_LEN);
-				state_ = 0;
 			}
 
 			else {
 				char c = *(data + i);
 				strncat(buff, &c, 1);
-
 			}
 		}
-		index_P = strlen(buff) + 1;
 
-	} 
+	}
 
 	else {
 		memset(buff, '\0', BUFF_LEN);
 		return;
 	}
 
+	dlzka = RX_len;
+	if (dlzka >= 200) {
+		dlzka = 0;
+	}
 }
+
+
 
 /* USER CODE END 4 */
 
